@@ -1,0 +1,80 @@
+---
+- name: "Update cache"
+  apt:
+    update_cache: true
+    cache_valid_time: 86400
+
+- name: Install docker
+  apt:
+    name:
+      - docker.io
+      - docker-compose-v2
+    state: present
+    update_cache: yes
+
+- name: Create elk docker directory
+  file:
+    path: /opt/docker/elk
+    state: directory
+    mode: 0755
+
+- name: Copy .env
+  template:
+    src: .env
+    dest: /opt/docker/elk/.env
+    mode: 0644
+
+- name: Copy docker-compose.yml
+  copy:
+    src: docker-compose.yml
+    dest: /opt/docker/elk/docker-compose.yml
+    mode: 0644
+
+- name: Copy elasticsearch.yml
+  template:
+    src: elasticsearch.yml
+    dest: /opt/docker/elk/elasticsearch.yml
+    mode: 0644
+
+- name: Copy kibana.yml
+  template:
+    src: kibana.yml
+    dest: /opt/docker/elk/kibana.yml
+    mode: 0644
+
+- name: Copy get_enrollment_token.py
+  template:
+    src: get_enrollment_token.py
+    dest: /opt/docker/elk/get_enrollment_token.py
+    mode: 0544
+
+- name: Start docker compose
+  community.docker.docker_compose_v2:
+    project_src: /opt/docker/elk
+    state: present
+
+- name: Pause to allow Kibana setup the fleet
+  pause:
+    seconds: 60
+
+- name: Execute get_enrollment_token.py
+  command: /opt/docker/elk/get_enrollment_token.py
+  register: script_output
+  failed_when: script_output.rc != 0
+  changed_when: false
+  args:
+    chdir: /opt/docker/elk
+
+- name: Print the script stdout
+  debug:
+    msg: "Script output: {{ script_output.stdout }}"
+
+- name: Print the script stderr
+  debug:
+    msg: "Script error output: {{ script_output.stderr }}"
+
+- name: Fetch enrollment_token.txt from the remote host
+  fetch:
+    src: /opt/docker/elk/enrollment_token.txt
+    dest: "{{ role_path  }}/enrollment_token.txt"
+    flat: yes

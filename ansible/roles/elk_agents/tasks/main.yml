@@ -1,0 +1,14 @@
+---
+- name: Set enrollment token
+  set_fact:
+    enrollment_token: "{{ lookup('file', role_path + '/../elk/enrollment_token.txt') }}"
+
+- name: Install Elastic Agent
+  win_shell: |
+    $ProgressPreference = 'SilentlyContinue'
+    Invoke-WebRequest -Uri https://artifacts.elastic.co/downloads/beats/elastic-agent/elastic-agent-{{ agent_version }}-windows-x86_64.zip -OutFile elastic-agent-{{ agent_version }}-windows-x86_64.zip
+    Expand-Archive .\elastic-agent-{{ agent_version }}-windows-x86_64.zip -DestinationPath .
+    cd elastic-agent-{{ agent_version }}-windows-x86_64
+    .\elastic-agent.exe install --url=https://{{ hostvars['elk']['ansible_host'] }}:8220 --enrollment-token={{ enrollment_token }} --insecure --non-interactive
+  args:
+    chdir: 'C:\Users\vagrant'

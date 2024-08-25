@@ -1,0 +1,58 @@
+# https://www.elastic.co/guide/en/kibana/current/settings.html
+elasticsearch.hosts: [ "https://es01:9200" ]
+elasticsearch.ssl.certificateAuthorities: "config/certs/ca/ca.crt"
+elasticsearch.username: kibana_system
+elasticsearch.password: {{ elastic_password }}
+server.host: 0.0.0.0
+server.name: kibana
+server.port: 5601
+server.ssl.certificate: config/certs/kib01/kib01.crt
+server.ssl.key: config/certs/kib01/kib01.key
+server.ssl.enabled: true
+
+# https://www.elastic.co/guide/en/kibana/current/alert-action-settings-kb.html
+xpack.encryptedSavedObjects.encryptionKey: abc45678901234567890123456789012
+
+# https://www.elastic.co/guide/en/kibana/current/fleet-settings-kb.html
+xpack.fleet.agents.enabled: true
+#  Hostnames used by Elastic Agent for accessing Fleet Server. 
+xpack.fleet.agents.fleet_server.hosts: ["https://{{ hostvars['elk']['ansible_host'] }}:8220"]
+xpack.fleet.packages:
+  - name: fleet_server
+    version: {{ fleet_server_version }}
+  - name: elastic_agent
+    version: {{ elastic_agent_version }}
+  - name: endpoint
+    version: {{ endpoint_version }}
+xpack.fleet.agentPolicies:
+  - name: Fleet Server Policy
+    id: fleet-server-policy
+    namespace: default
+    data_output_id: es01
+    monitoring_output_id: es01
+    package_policies:
+      - name: fleet-server
+        package:
+          name: fleet_server
+  - name: Windows Agent Policy
+    id: windows-agent-policy
+    namespace: default
+    data_output_id: es01
+    monitoring_output_id: es01
+    package_policies:
+      - name: elastic-agent
+        package:
+          name: elastic_agent
+      - name: elastic-defend
+        package:
+          name: endpoint
+xpack.fleet.outputs:
+  - id: es01
+    name: ES01
+    type: elasticsearch
+    hosts:
+      - "https://{{ hostvars['elk']['ansible_host'] }}:9200"
+    config:
+      ssl.verification_mode: none
+    is_default: true
+    is_default_monitoring: true
